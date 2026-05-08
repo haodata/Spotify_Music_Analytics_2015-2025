@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Music Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #e5e4e0;
+  --border-light: #eeede9;
+  --text: #1c1b18;
+  --muted: #7a7971;
+  --muted2: #a8a79f;
+  --accent: #1d63ed;
+  --accent-text: #ffffff;
+  --green: #1a7c45;
+  --red: #b52020;
+  --amber: #936200;
+  --purple: #5c1fb5;
+  --tab-active-bg: #1d63ed;
+  --tab-active-text: #ffffff;
+  --tab-bg: #ffffff;
+  --tab-text: #4a4940;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 28px 32px 48px;
+  font-size: 14px;
+}
+
+/* ── Header ── */
+.page-header { margin-bottom: 20px; }
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.page-meta {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── KPI strip ── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px 14px;
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.kpi-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Tab nav ── */
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 22px;
+}
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--tab-bg);
+  color: var(--tab-text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.tab-btn:hover { background: #f0efe9; border-color: #ccc; }
+.tab-btn.active {
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
+  border-color: var(--tab-active-bg);
+}
+.tab-icon { font-size: 14px; }
+
+/* ── Section header ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.section-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff3e0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+
+/* ── Chart grid ── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.chart-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.chart-grid-wide {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chart-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.chart-card-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 2px;
+}
+.chart-wrap { position: relative; }
+
+/* ── Country table ── */
+.country-table { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.country-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.flag-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+.genre-badge {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-weight: 500;
+}
+.badge-blue   { background: #e8f0fd; color: #1d63ed; }
+.badge-green  { background: #e6f4ec; color: #1a7c45; }
+.badge-red    { background: #fdeaea; color: #b52020; }
+.badge-amber  { background: #fdf6e3; color: #936200; }
+.badge-purple { background: #f0eafd; color: #5c1fb5; }
+
+/* ── Artist bars ── */
+.artist-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.a-row { display: flex; align-items: center; gap: 10px; }
+.a-rank { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted2); min-width: 18px; text-align: right; }
+.a-name { font-size: 12px; font-weight: 500; color: var(--text); min-width: 120px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-bar-bg { flex: 1; height: 5px; background: #f0ede8; border-radius: 3px; overflow: hidden; }
+.a-bar { height: 5px; border-radius: 3px; }
+.a-val { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); min-width: 36px; text-align: right; }
+
+/* ── Label bars ── */
+.label-list { display: flex; flex-direction: column; gap: 9px; flex: 1; }
+.l-row { display: flex; align-items: center; gap: 10px; }
+.l-name { font-size: 12px; font-weight: 500; min-width: 110px; color: var(--text); white-space: nowrap; }
+.l-bar-bg { flex: 1; height: 6px; background: #f0ede8; border-radius: 3px; overflow: hidden; }
+.l-bar { height: 6px; border-radius: 3px; }
+.l-val { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); min-width: 36px; text-align: right; }
+
+/* ── Explicit compare ── */
+.exp-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.exp-block {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  text-align: center;
+}
+.exp-block-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+.exp-block-val { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1; margin-bottom: 3px; }
+.exp-block-sub { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.exp-block-meta { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 5px; }
+
+/* ── Insight note ── */
+.insight {
+  background: #f0f4fd;
+  border: 1px solid #c9d9f9;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 12px;
+  color: #1d4db5;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.5;
+}
+
+/* ── Legend ── */
+.legend { display: flex; flex-wrap: wrap; gap: 10px; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.leg-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── Panel visibility ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.panel.active { animation: fadeIn .22s ease both; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="page-title">Spotify Music Analysis</div>
+  <div class="page-meta">85,000 tracks · 2015–2025 · 10 countries · 12 genres</div>
+</div>
+
+<!-- KPI Strip -->
+<div class="kpi-strip">
+  <div class="kpi-card">
+    <div class="kpi-label">Total tracks</div>
+    <div class="kpi-value">85,000</div>
+    <div class="kpi-sub">2015–2025</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg popularity</div>
+    <div class="kpi-value">48.2</div>
+    <div class="kpi-sub">out of 100</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total streams</div>
+    <div class="kpi-value">18.2B</div>
+    <div class="kpi-sub">across all tracks</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Explicit rate</div>
+    <div class="kpi-value">20.1%</div>
+    <div class="kpi-sub">of all tracks</div>
+  </div>
+</div>
+
+<!-- Tab Nav -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('popularity', this)"><span class="tab-icon">🔥</span> Popularity</button>
+  <button class="tab-btn" onclick="switchTab('genre', this)"><span class="tab-icon">🎵</span> Genre</button>
+  <button class="tab-btn" onclick="switchTab('country', this)"><span class="tab-icon">🌍</span> Country</button>
+  <button class="tab-btn" onclick="switchTab('streams', this)"><span class="tab-icon">▶</span> Streams</button>
+  <button class="tab-btn" onclick="switchTab('explicit', this)"><span class="tab-icon">⚠</span> Explicit</button>
+  <button class="tab-btn" onclick="switchTab('artist', this)"><span class="tab-icon">🎤</span> Artists</button>
+  <button class="tab-btn" onclick="switchTab('label', this)"><span class="tab-icon">🏢</span> Labels</button>
+  <button class="tab-btn" onclick="switchTab('trend', this)"><span class="tab-icon">📈</span> Trends</button>
+</div>
+
+<!-- ───────────── PANEL 1: Popularity ───────────── -->
+<div id="panel-popularity" class="panel active">
+  <div class="section-header">
+    <span class="section-icon">🔥</span>
+    1. Popularity Analysis — What factors drive song popularity?
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Popularity vs. Audio Feature Correlation</div>
+        <div class="chart-card-sub">Pearson r · higher = stronger relationship</div>
+      </div>
+      <div class="chart-wrap" style="height:230px"><canvas id="corrChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Average Popularity by Genre</div>
+        <div class="chart-card-sub">Mean popularity score per genre (0–100)</div>
+      </div>
+      <div class="chart-wrap" style="height:230px"><canvas id="genrePopChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">💡 Stream count (r = 0.36) is the strongest predictor of popularity. Audio features like danceability, energy, and tempo show near-zero correlation — popularity is driven by market exposure, not musical style.</div>
+</div>
+
+<!-- ───────────── PANEL 2: Genre ───────────── -->
+<div id="panel-genre" class="panel">
+  <div class="section-header">
+    <span class="section-icon">🎵</span>
+    2. Genre Analysis — Which genre is most popular?
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Total Streams by Genre</div>
+        <div class="chart-card-sub">Cumulative streams in millions</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="genreStreamsChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Avg. Streams per Track by Genre</div>
+        <div class="chart-card-sub">Mean stream count per individual track (thousands)</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="genreAvgChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">🏆 Hip-Hop leads in both total streams (1.91B) and avg. per track (266K). R&B ranks 2nd (1.63B). Metal unexpectedly claims 3rd. Indie is the most niche genre with only 1.26B total.</div>
+</div>
+
+<!-- ───────────── PANEL 3: Country ───────────── -->
+<div id="panel-country" class="panel">
+  <div class="section-header">
+    <span class="section-icon">🌍</span>
+    3. Country Analysis — What music does each country prefer?
+  </div>
+  <div class="chart-grid-wide">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Top Genre by Country</div>
+        <div class="chart-card-sub">Most-streamed genre per country</div>
+      </div>
+      <div class="country-table" style="margin-top:4px">
+        <div class="country-row"><span class="flag-label">🇺🇸 United States</span><span class="genre-badge badge-blue">Hip-Hop</span></div>
+        <div class="country-row"><span class="flag-label">🇬🇧 United Kingdom</span><span class="genre-badge badge-green">Pop</span></div>
+        <div class="country-row"><span class="flag-label">🇧🇷 Brazil</span><span class="genre-badge badge-red">R&B</span></div>
+        <div class="country-row"><span class="flag-label">🇫🇷 France</span><span class="genre-badge badge-amber">Reggaeton</span></div>
+        <div class="country-row"><span class="flag-label">🇩🇪 Germany</span><span class="genre-badge badge-blue">Hip-Hop</span></div>
+        <div class="country-row"><span class="flag-label">🇮🇳 India</span><span class="genre-badge badge-purple">Classical</span></div>
+        <div class="country-row"><span class="flag-label">🇯🇵 Japan</span><span class="genre-badge badge-green">Country</span></div>
+        <div class="country-row"><span class="flag-label">🇨🇦 Canada</span><span class="genre-badge badge-green">Pop</span></div>
+        <div class="country-row"><span class="flag-label">🇦🇺 Australia</span><span class="genre-badge badge-blue">Hip-Hop</span></div>
+        <div class="country-row"><span class="flag-label">🇲🇽 Mexico</span><span class="genre-badge badge-blue">Hip-Hop</span></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Avg. Popularity by Country</div>
+        <div class="chart-card-sub">Mean track popularity score</div>
+      </div>
+      <div class="chart-wrap" style="height:290px"><canvas id="countryPopChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">🌍 Hip-Hop dominates the US, Germany, Australia & Mexico. UK and Canada favor Pop. India uniquely leads with Classical. France's top genre is Reggaeton. Japan prefers Country.</div>
+</div>
+
+<!-- ───────────── PANEL 4: Streams ───────────── -->
+<div id="panel-streams" class="panel">
+  <div class="section-header">
+    <span class="section-icon">▶</span>
+    4. Stream Analysis — What makes a hit song?
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Hit Songs vs. Normal Tracks</div>
+        <div class="chart-card-sub">Feature comparison — Top 5% vs. rest</div>
+      </div>
+      <div class="legend" style="margin-bottom:4px">
+        <span class="leg"><span class="leg-dot" style="background:#1d63ed"></span>Top 5% hits</span>
+        <span class="leg"><span class="leg-dot" style="background:#e5a220"></span>Normal tracks</span>
+      </div>
+      <div class="chart-wrap" style="height:210px"><canvas id="hitRadarChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Genre Distribution in Hit Songs</div>
+        <div class="chart-card-sub">Share of top-5% tracks by genre</div>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="hitGenreChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">💥 Hit songs (top 5%) average a popularity score of 80.8 vs. 46.4 for normal tracks. Hip-Hop (9.3%), R&B (9.0%), and Pop (8.9%) dominate the hits. Audio features differ minimally — popularity exposure is the key driver.</div>
+</div>
+
+<!-- ───────────── PANEL 5: Explicit ───────────── -->
+<div id="panel-explicit" class="panel">
+  <div class="section-header">
+    <span class="section-icon">⚠</span>
+    5. Explicit Content — Do explicit songs perform better?
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Clean vs. Explicit Comparison</div>
+        <div class="chart-card-sub">Popularity and stream count side-by-side</div>
+      </div>
+      <div class="exp-compare" style="margin-top:8px">
+        <div class="exp-block">
+          <div class="exp-block-label">Clean</div>
+          <div class="exp-block-val" style="color:#1d63ed">48.2</div>
+          <div class="exp-block-sub">avg popularity</div>
+          <div class="exp-block-meta">215K avg streams</div>
+          <div class="exp-block-meta">67,887 tracks</div>
+        </div>
+        <div class="exp-block">
+          <div class="exp-block-label">Explicit</div>
+          <div class="exp-block-val" style="color:#b52020">48.1</div>
+          <div class="exp-block-sub">avg popularity</div>
+          <div class="exp-block-meta">211K avg streams</div>
+          <div class="exp-block-meta">17,113 tracks</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:130px;margin-top:10px"><canvas id="explicitBarChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Explicit Rate by Genre</div>
+        <div class="chart-card-sub">% of explicit tracks per genre</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="explicitGenreChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">❌ Explicit content does NOT drive higher popularity (difference: 0.03 pts). Explicit tracks average slightly fewer streams. Surprisingly, Classical has the highest explicit rate (20.7%) — defying expectations.</div>
+</div>
+
+<!-- ───────────── PANEL 6: Artists ───────────── -->
+<div id="panel-artist" class="panel">
+  <div class="section-header">
+    <span class="section-icon">🎤</span>
+    6. Artist Rankings — Top performers by multiple metrics
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Top 10 Artists by Total Streams</div>
+        <div class="chart-card-sub">Cumulative streams in millions</div>
+      </div>
+      <div class="artist-list" id="artistStreamList" style="margin-top:6px"></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Top 10 Artists by Avg. Popularity</div>
+        <div class="chart-card-sub">Mean popularity score across all tracks</div>
+      </div>
+      <div class="artist-list" id="artistPopList" style="margin-top:6px"></div>
+    </div>
+  </div>
+  <div class="insight">🎤 Anthony Walker leads in total streams (40M). Caitlin Smith and Todd Rodriguez top the popularity chart at 89.0 and 86.5 respectively — exceptional hit rates despite fewer songs.</div>
+</div>
+
+<!-- ───────────── PANEL 7: Labels ───────────── -->
+<div id="panel-label" class="panel">
+  <div class="section-header">
+    <span class="section-icon">🏢</span>
+    7. Label Analysis — Which labels dominate?
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Total Streams by Record Label</div>
+        <div class="chart-card-sub">Billions of streams · top 8 labels</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="labelChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Label Performance Breakdown</div>
+        <div class="chart-card-sub">Streams · avg popularity · catalog size</div>
+      </div>
+      <div class="label-list" id="labelList" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div class="insight">🏅 Top 3: 🥇 EMI (2.45B) · 🥈 Sony Music (2.42B) · 🥉 Independent (2.38B, largest catalog). All labels share an identical ~5% hit rate — a remarkably level playing field.</div>
+</div>
+
+<!-- ───────────── PANEL 8: Trends ───────────── -->
+<div id="panel-trend" class="panel">
+  <div class="section-header">
+    <span class="section-icon">📈</span>
+    8. Time Trends 2015–2025
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Genre Stream Trends 2015–2025</div>
+        <div class="chart-card-sub">Monthly streams in millions for top 5 genres</div>
+      </div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#1a7c45"></span>Hip-Hop</span>
+        <span class="leg"><span class="leg-dot" style="background:#1d63ed"></span>Country</span>
+        <span class="leg"><span class="leg-dot" style="background:#b52020"></span>R&B</span>
+        <span class="leg"><span class="leg-dot" style="background:#936200"></span>Pop</span>
+        <span class="leg"><span class="leg-dot" style="background:#5c1fb5"></span>Classical</span>
+      </div>
+      <div class="chart-wrap" style="height:210px"><canvas id="genreTrendChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div>
+        <div class="chart-card-title">Explicit Rate & Avg. Tempo Over Time</div>
+        <div class="chart-card-sub">Explicit % (left) · BPM ÷ 10 (right)</div>
+      </div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#b52020"></span>Explicit %</span>
+        <span class="leg"><span class="leg-dot" style="background:#5c1fb5"></span>Tempo ÷ 10</span>
+      </div>
+      <div class="chart-wrap" style="height:210px"><canvas id="trendMetaChart"></canvas></div>
+    </div>
+  </div>
+  <div class="insight">🚀 Hip-Hop surged to an all-time high in 2025 (241M). Explicit rate held flat at 19–21% — no upward trend. Average Tempo unchanged at 129–131 BPM for the entire decade.</div>
+</div>
+
+<script>
+// ── Tab switching ──
+function switchTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── Chart defaults ──
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#7a7971';
+Chart.defaults.borderColor = '#eeede9';
+
+const C = {
+  blue: '#1d63ed', green: '#1a7c45', red: '#b52020',
+  amber: '#936200', purple: '#5c1fb5', teal: '#0e7c7c',
+  orange: '#c04e00', slate: '#4a6079', pink: '#a01f6e', lime: '#5a7c00',
+  muted: '#a8a79f'
+};
+const GENRE_COLORS = [C.blue,C.green,C.red,C.purple,C.amber,C.orange,C.teal,C.slate,C.pink,C.lime,C.muted,'#333'];
+
+function mkBar(id, labels, data, colors, opts={}) {
+  new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f0ede8' }, ticks: { font: { size: 11 } } }
+      },
+      ...opts
+    }
+  });
+}
+
+// ── 1. Popularity ──
+new Chart(document.getElementById('corrChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Stream count','Loudness','Danceability','Instrument.','Energy','Explicit','Tempo'],
+    datasets: [{ data: [0.3575,0.0033,0.0032,0.0023,-0.0004,-0.0009,-0.0028],
+      backgroundColor: ctx => ctx.parsed.y >= 0 ? C.blue : C.red,
+      borderRadius: 4, barThickness: 22 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => ' r = ' + v.parsed.y.toFixed(4) } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: '#f0ede8' }, title: { display: true, text: 'Pearson r', color: '#a8a79f', font: { size: 10 } } }
+    }
+  }
+});
+
+const GENRES = ['Hip-Hop','R&B','Metal','Classical','Folk','Pop','EDM','Rock','Jazz','Country','Reggaeton','Indie'];
+mkBar('genrePopChart', GENRES, [48.36,48.36,48.19,48.36,48.1,48.37,48.2,47.97,47.85,48.17,47.88,48.12],
+  GENRE_COLORS, { scales: { y: { min: 47.5, max: 48.6, grid: { color: '#f0ede8' } }, x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 9 } } } } });
+
+// ── 2. Genre ──
+new Chart(document.getElementById('genreStreamsChart'), {
+  type: 'bar',
+  data: { labels: GENRES, datasets: [{ data: [1906.8,1625.6,1605.0,1558.5,1539.0,1538.2,1533.1,1452.1,1447.5,1440.5,1316.0,1258.0],
+    backgroundColor: GENRE_COLORS, borderRadius: 4, barThickness: 14 }] },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => ' ' + v.parsed.x.toFixed(0) + 'M' } } },
+    scales: { x: { grid: { color: '#f0ede8' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+  }
+});
+new Chart(document.getElementById('genreAvgChart'), {
+  type: 'bar',
+  data: { labels: GENRES, datasets: [{ data: [266.3,229.5,222.9,217.7,217.4,216.8,222.4,204.1,201.7,204.9,188.0,179.5],
+    backgroundColor: GENRE_COLORS, borderRadius: 4, barThickness: 14 }] },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => ' ' + v.parsed.x.toFixed(0) + 'K' } } },
+    scales: { x: { grid: { color: '#f0ede8' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+  }
+});
+
+// ── 3. Country ──
+new Chart(document.getElementById('countryPopChart'), {
+  type: 'bar',
+  data: {
+    labels: ['UK','Japan','France','Brazil','Germany','USA','Canada','Australia','India','Mexico'],
+    datasets: [{ data: [48.41,48.35,48.33,48.31,48.07,48.06,48.06,48.05,48.01,47.96],
+      backgroundColor: GENRE_COLORS, borderRadius: 4, barThickness: 16 }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { min: 47.7, max: 48.6, grid: { color: '#f0ede8' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+  }
+});
+
+// ── 4. Streams / Hit DNA ──
+new Chart(document.getElementById('hitRadarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Popularity /10','Danceability ×100','Energy ×100','Tempo /200','Explicit ×100'],
+    datasets: [
+      { label: 'Hits', data: [8.08,52.6,50.4,64.7,19.8], borderColor: C.blue, backgroundColor: 'rgba(29,99,237,0.1)', pointBackgroundColor: C.blue, pointRadius: 3, borderWidth: 2 },
+      { label: 'Normal', data: [4.64,52.0,50.5,65.0,20.1], borderColor: C.amber, backgroundColor: 'rgba(147,98,0,0.06)', pointBackgroundColor: C.amber, pointRadius: 3, borderWidth: 1.5, borderDash: [4,3] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { r: { grid: { color: '#eeede9' }, angleLines: { color: '#eeede9' }, pointLabels: { font: { size: 10 } }, ticks: { display: false }, suggestedMin: 0, suggestedMax: 85 } }
+  }
+});
+new Chart(document.getElementById('hitGenreChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Hip-Hop','R&B','Pop','Metal','Folk','Others'],
+    datasets: [{ data: [9.3,9.0,8.9,8.6,8.4,55.8], backgroundColor: [C.blue,C.red,C.amber,C.purple,C.green,'#e0deda'], borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } } },
+    cutout: '58%'
+  }
+});
+
+// ── 5. Explicit ──
+new Chart(document.getElementById('explicitBarChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Popularity', 'Avg Streams (K)'],
+    datasets: [
+      { label: 'Clean', data: [48.2, 215.3], backgroundColor: C.blue, borderRadius: 4 },
+      { label: 'Explicit', data: [48.1, 210.5], backgroundColor: C.red, borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: 'top', labels: { font: { size: 11 }, boxWidth: 10 } } },
+    scales: { x: { grid: { display: false } }, y: { grid: { color: '#f0ede8' } } }
+  }
+});
+new Chart(document.getElementById('explicitGenreChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Classical','Hip-Hop','Rock','Folk','Pop','Indie','Metal','Country','R&B','Reggaeton','EDM','Jazz'],
+    datasets: [{ data: [20.7,20.6,20.5,20.5,20.3,20.3,20.2,20.1,20.0,19.9,19.3,19.1],
+      backgroundColor: GENRE_COLORS, borderRadius: 4, barThickness: 14 }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => ' ' + v.parsed.x + '%' } } },
+    scales: { x: { min: 18.5, max: 21.5, grid: { color: '#f0ede8' }, ticks: { callback: v => v + '%', font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+  }
+});
+
+// ── 6. Artists ──
+const artists = [
+  {n:'Anthony Walker',s:40.0,p:62},{n:'Peter Hall',s:34.1,p:72},{n:'Rebecca Brown',s:27.9,p:60},
+  {n:'Kimberly Smith',s:26.8,p:60},{n:'Jason Owens',s:25.4,p:61},{n:'Samantha Johnson',s:24.4,p:59},
+  {n:'Caitlin Smith',s:24.3,p:89},{n:'Stephanie Lee',s:24.2,p:71},{n:'Amanda Henry',s:21.9,p:66},{n:'Todd Rodriguez',s:21.8,p:87}
+];
+const BAR_COLS = [C.blue,C.blue,C.blue,C.green,C.green,C.green,C.red,C.red,C.amber,C.amber];
+const asl = document.getElementById('artistStreamList');
+artists.forEach((a,i) => {
+  asl.innerHTML += `<div class="a-row">
+    <span class="a-rank">${i+1}</span>
+    <span class="a-name">${a.n}</span>
+    <div class="a-bar-bg"><div class="a-bar" style="width:${(a.s/40)*100}%;background:${BAR_COLS[i]}"></div></div>
+    <span class="a-val">${a.s}M</span>
+  </div>`;
+});
+const byPop = [...artists].sort((a,b) => b.p - a.p);
+const apl = document.getElementById('artistPopList');
+byPop.forEach((a,i) => {
+  apl.innerHTML += `<div class="a-row">
+    <span class="a-rank">${i+1}</span>
+    <span class="a-name">${a.n}</span>
+    <div class="a-bar-bg"><div class="a-bar" style="width:${a.p}%;background:${BAR_COLS[i]}"></div></div>
+    <span class="a-val">${a.p}</span>
+  </div>`;
+});
+
+// ── 7. Labels ──
+const labels8 = [
+  {n:'EMI',v:2.451},{n:'Sony Music',v:2.421},{n:'Independent',v:2.384},
+  {n:'Universal',v:2.276},{n:'Warner Music',v:2.242},{n:'Island Records',v:2.18},
+  {n:'Columbia',v:2.162},{n:'XL Recordings',v:2.104}
+];
+const LCOLS = [C.blue,C.green,C.red,C.amber,C.purple,C.teal,C.orange,C.slate];
+new Chart(document.getElementById('labelChart'), {
+  type: 'bar',
+  data: {
+    labels: labels8.map(l => l.n),
+    datasets: [{ data: labels8.map(l => l.v), backgroundColor: LCOLS, borderRadius: 4, barThickness: 20 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => ' ' + v.parsed.y.toFixed(3) + 'B' } } },
+    scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 30 } }, y: { grid: { color: '#f0ede8' }, min: 2.0, ticks: { callback: v => v + 'B', font: { size: 10 } } } }
+  }
+});
+const ll = document.getElementById('labelList');
+labels8.forEach((l,i) => {
+  const medal = i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
+  ll.innerHTML += `<div class="l-row">
+    <span class="l-name" style="font-weight:${i<3?'600':'400'}">${medal}${l.n}</span>
+    <div class="l-bar-bg"><div class="l-bar" style="width:${(l.v/2.5)*100}%;background:${LCOLS[i]}"></div></div>
+    <span class="l-val">${l.v}B</span>
+  </div>`;
+});
+
+// ── 8. Trends ──
+const YEARS = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+new Chart(document.getElementById('genreTrendChart'), {
+  type: 'line',
+  data: {
+    labels: YEARS,
+    datasets: [
+      {label:'Hip-Hop', data:[157.9,199.8,161.8,176.6,150.1,183.0,139.9,104.7,186.6,204.8,241.8], borderColor:C.green, backgroundColor:'rgba(26,124,69,0.07)', fill:true, pointRadius:2.5, tension:.35, borderWidth:2},
+      {label:'Country', data:[143.8,132.2,111.2,165.5,83.7,159.6,100.3,111.1,84.5,173.7,174.8], borderColor:C.blue, backgroundColor:'transparent', pointRadius:2, tension:.35, borderWidth:1.5, borderDash:[5,3]},
+      {label:'R&B',     data:[176.2,118.3,104.7,212.3,100.7,157.6,183.9,96.2,223.7,151.9,100.1], borderColor:C.red, backgroundColor:'transparent', pointRadius:2, tension:.35, borderWidth:1.5, borderDash:[5,3]},
+      {label:'Pop',     data:[183.7,148.6,134.6,109.0,100.3,170.5,130.9,188.7,136.0,147.8,88.0], borderColor:C.amber, backgroundColor:'transparent', pointRadius:2, tension:.35, borderWidth:1.5, borderDash:[3,2]},
+      {label:'Classical',data:[170.8,119.4,114.6,113.8,87.0,163.0,168.8,169.7,121.5,160.7,169.2], borderColor:C.purple, backgroundColor:'transparent', pointRadius:2, tension:.35, borderWidth:1.5, borderDash:[3,2]}
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#f0ede8' }, ticks: { callback: v => v+'M', font: { size: 10 } } } }
+  }
+});
+new Chart(document.getElementById('trendMetaChart'), {
+  type: 'line',
+  data: {
+    labels: YEARS,
+    datasets: [
+      {label:'Explicit %', data:[20.3,20.1,20.6,20.0,20.0,20.1,20.7,20.4,19.0,20.3,19.9], borderColor:C.red, backgroundColor:'rgba(181,32,32,0.06)', fill:true, pointRadius:2.5, tension:.3, borderWidth:2, yAxisID:'y'},
+      {label:'Tempo ÷10', data:[13.0,13.1,13.0,13.0,13.0,12.9,13.0,13.0,12.9,13.0,13.0], borderColor:C.purple, backgroundColor:'transparent', pointRadius:2, tension:.3, borderWidth:1.5, borderDash:[4,2], yAxisID:'y2'}
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y:  { position:'left',  grid:{color:'#f0ede8'}, min:18, max:22, ticks:{callback:v=>v+'%', font:{size:10}}},
+      y2: { position:'right', grid:{drawOnChartArea:false}, min:12.5, max:13.5, ticks:{callback:v=>(v*10).toFixed(0)+' BPM', font:{size:10}}}
+    }
+  }
+});
+</script>
+</body>
+</html>
